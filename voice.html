@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceAccess - Voice-Controlled Accessibility</title>
+    <style>
+        :root {
+            --primary-bg: #0f0f0f;
+            --secondary-bg: #1a1a1a;
+            --accent-bg: #2a2a2a;
+            --primary-text: #ffffff;
+            --secondary-text: #b3b3b3;
+            --accent-color: #00d4ff;
+            --success-color: #00ff88;
+            --warning-color: #ffaa00;
+            --danger-color: #ff4444;
+            --border-radius: 16px;
+            --shadow-light: 0 4px 20px rgba(0, 212, 255, 0.15);
+            --shadow-heavy: 0 8px 40px rgba(0, 0, 0, 0.6);
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-md: 1rem;
+            --font-size-lg: 1.25rem;
+            --font-size-xl: 1.5rem;
+            --font-size-2xl: 2rem;
+            --font-size-3xl: 3rem;
+        }
+
+        .high-contrast {
+            --primary-bg: #000000;
+            --secondary-bg: #111111;
+            --accent-bg: #222222;
+            --primary-text: #ffffff;
+            --secondary-text: #ffffff;
+            --accent-color: #ffff00;
+        }
+
+        .large-text {
+            --font-size-xs: 1rem;
+            --font-size-sm: 1.25rem;
+            --font-size-md: 1.5rem;
+            --font-size-lg: 1.75rem;
+            --font-size-xl: 2rem;
+            --font-size-2xl: 2.5rem;
+            --font-size-3xl: 4rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--primary-bg);
+            color: var(--primary-text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--secondary-bg);
+            border-right: 1px solid var(--accent-bg);
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid var(--accent-bg);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .logo-text {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            margin: 4px 1rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--secondary-text);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-size: var(--font-size-sm);
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: var(--accent-bg);
+            color: var(--primary-text);
+            transform: translateX(4px);
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            width: 24px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            transition: margin-left 0.3s ease;
+            background: var(--primary-bg);
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        .header {
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--accent-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: var(--primary-text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            background: var(--accent-bg);
+        }
+
+        .page-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: auto;
+        }
+
+        .voice-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-bg);
+            border-radius: 20px;
+            font-size: var(--font-size-sm);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: var(--success-color);
+        }
+
+        /* Content Area */
+        .content {
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--accent-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            opacity: 0.7;
+        }
+
+        /* Toggle Switches */
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--accent-bg);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .toggle-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .toggle-label {
+            font-size: var(--font-size-md);
+            font-weight: 500;
+        }
+
+        .toggle-description {
+            font-size: var(--font-size-sm);
+            color: var(--secondary-text);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 32px;
+            background: var(--accent-bg);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-color);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: var(--primary-text);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(28px);
+        }
+
+        /* Voice Control Panel */
+        .voice-control-panel {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, var(--secondary-bg), var(--accent-bg));
+        }
+
+        .voice-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .voice-button {
+            background: var(--accent-bg);
+            border: 2px solid var(--accent-color);
+            color: var(--primary-text);
+            padding: 1.5rem;
+            border-radius: 16px;
+            font-size: var(--font-size-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-button:hover {
+            background: var(--accent-color);
+            transform: scale(1.02);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .voice-button.active {
+            background: var(--accent-color);
+            animation: pulse-button 2s infinite;
+        }
+
+        .voice-button-icon {
+            font-size: 2rem;
+        }
+
+        /* Settings Panel */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        /* Keyboard Shortcuts */
+        .shortcuts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--accent-bg);
+            border-radius: 12px;
+        }
+
+        .shortcut-keys {
+            display: flex;
+            gap: 4px;
+        }
+
+        .key {
+            background: var(--primary-bg);
+            color: var(--accent-color);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+        }
+
+        /* Command History */
+        .command-history {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .command-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: var(--accent-bg);
+            border-radius: 8px;
+            font-size: var(--font-size-sm);
+        }
+
+        .command-time {
+            color: var(--secondary-text);
+            font-size: var(--font-size-xs);
+        }
+
+        .command-text {
+            flex: 1;
+        }
+
+        .command-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-color);
+        }
+
+        .command-status.error {
+            background: var(--danger-color);
+        }
+
+        /* Accessibility Features */
+        .accessibility-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--accent-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 1rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes pulse-button {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.8); }
+        }
+
+        /* Voice Visualization */
+        .voice-visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            height: 60px;
+            margin: 1rem 0;
+        }
+
+        .wave-bar {
+            width: 6px;
+            background: var(--accent-color);
+            border-radius: 3px;
+            animation: wave 1.5s ease-in-out infinite;
+            opacity: 0.7;
+        }
+
+        .wave-bar:nth-child(1) { height: 20px; animation-delay: 0s; }
+        .wave-bar:nth-child(2) { height: 35px; animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { height: 45px; animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { height: 25px; animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { height: 40px; animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 100% { height: 20px; }
+            50% { height: 60px; }
+        }
+
+        /* Notification System */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--secondary-bg);
+            color: var(--primary-text);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-heavy);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 2000;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: var(--success-color);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .notification.error {
+            border-left-color: var(--danger-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">🎙️</div>
+                <span class="logo-text">VoiceAccess</span>
+            </div>
+        </div>
+        
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="voice-control">
+                    <span class="nav-icon">🎤</span>
+                    Voice Control
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="accessibility">
+                    <span class="nav-icon">♿</span>
+                    Accessibility
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    Settings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="shortcuts">
+                    <span class="nav-icon">⌨️</span>
+                    Shortcuts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="help">
+                    <span class="nav-icon">❓</span>
+                    Help & Support
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">☰</button>
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <div class="voice-status">
+                    <span class="status-dot" id="voiceStatusDot"></span>
+                    <span id="voiceStatusText">Voice Inactive</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Container -->
+        <div class="content" id="content">
+            <!-- Dashboard Page -->
+            <div class="page" id="dashboard-page">
+                <div class="dashboard-grid">
+                    <!-- Voice Control Status -->
+                    <div class="card voice-control-panel">
+                        <div class="card-header">
+                            <h3 class="card-title">Voice Control Center</h3>
+                            <span class="card-icon">🎙️</span>
+                        </div>
+                        
+                        <div class="voice-visualizer" id="voiceVisualizer" style="display: none;">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                        
+                        <div class="voice-controls">
+                            <button class="voice-button" id="startListening">
+                                <span class="voice-button-icon">🎤</span>
+                                Start Listening
+                            </button>
+                            <button class="voice-button" id="stopListening">
+                                <span class="voice-button-icon">🛑</span>
+                                Stop Listening
+                            </button>
+                            <button class="voice-button" id="calibrateVoice">
+                                <span class="voice-button-icon">🎯</span>
+                                Calibrate
+                            </button>
+                            <button class="voice-button" id="testVoice">
+                                <span class="voice-button-icon">🧪</span>
+                                Test Voice
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Accessibility Toggles -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Quick Access</h3>
+                            <span class="card-icon">⚡</span>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">High Contrast Mode</span>
+                                    <span class="toggle-description">Improve visual clarity</span>
+                                </div>
+                                <div class="toggle-switch" id="highContrastToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Large Text</span>
+                                    <span class="toggle-description">Increase font sizes</span>
+                                </div>
+                                <div class="toggle-switch" id="largeTextToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Voice Commands</span>
+                                    <span class="toggle-description">Enable voice control</span>
+                                </div>
+                                <div class="toggle-switch" id="voiceCommandsToggle">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Command History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Commands</h3>
+                            <span class="card-icon">📝</span>
+                        </div>
+                        
+                        <div class="command-history" id="commandHistory">
+                            <div class="command-item">
+                                <span class="command-status"></span>
+                                <span class="command-text">Application initialized</span>
+                                <span class="command-time">Just now</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">System Status</h3>
+                            <span class="card-icon">💻</span>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Microphone</span>
+                                    <span class="toggle-description" id="micStatus">Checking...</span>
+                                </div>
+                                <div class="toggle-switch" id="microphoneStatus">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Speech Recognition</span>
+                                    <span class="toggle-description" id="speechStatus">Initializing...</span>
+                                </div>
+                                <div class="toggle-switch" id="speechRecognitionStatus">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accessibility Page -->
+            <div class="page" id="accessibility-page" style="display: none;">
+                <div class="accessibility-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">👁️</div>
+                        <h3>Visual Accessibility</h3>
+                        <p>High contrast modes, text scaling, and visual enhancements for better readability.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🎧</div>
+                        <h3>Audio Accessibility</h3>
+                        <p>Screen reading, audio cues, and sound amplification features.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🎤</div>
+                        <h3>Voice Control</h3>
+                        <p>Complete voice navigation and command recognition system.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">⌨️</div>
+                        <h3>Keyboard Navigation</h3>
+                        <p>Full keyboard shortcuts and navigation support.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🖱️</div>
+                        <h3>Mouse Alternatives</h3>
+                        <p>Eye tracking, head tracking, and switch control options.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Cognitive Support</h3>
+                        <p>Memory aids, simplified interfaces, and cognitive assistance tools.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="settings-page" style="display: none;">
+                <div class="settings-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Voice Settings</h3>
+                            <span class="card-icon">🎙️</span>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Continuous Listening</span>
+                                    <span class="toggle-description">Always listen for wake word</span>
+                                </div>
+                                <div class="toggle-switch" id="continuousListening">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Voice Feedback</span>
+                                    <span class="toggle-description">Audio confirmation of commands</span>
+                                </div>
+                                <div class="toggle-switch" id="voiceFeedback">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Display Settings</h3>
+                            <span class="card-icon">🖥️</span>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Reduce Motion</span>
+                                    <span class="toggle-description">Minimize animations</span>
+                                </div>
+                                <div class="toggle-switch" id="reduceMotion">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Focus Indicators</span>
+                                    <span class="toggle-description">Enhanced focus outlines</span>
+                                </div>
+                                <div class="toggle-switch" id="focusIndicators">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shortcuts Page -->
+            <div class="page" id="shortcuts-page" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Keyboard Shortcuts</h3>
+                        <span class="card-icon">⌨️</span>
+                    </div>
+                    
+                    <div class="shortcuts-list">
+                        <div class="shortcut-item">
+                            <span>Toggle Voice Control</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Ctrl</span>
+                                <span class="key">Shift</span>
+                                <span class="key">V</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Toggle High Contrast</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Alt</span>
+                                <span class="key">Shift</span>
+                                <span class="key">H</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Increase Text Size</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Ctrl</span>
+                                <span class="key">+</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Decrease Text Size</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Ctrl</span>
+                                <span class="key">-</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Navigate Menu</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Tab</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Activate Element</span>
+                            <div class="shortcut-keys">
+                                <span class="key">Enter</span>
+                            </div>
+                        </div>
+                        
+                        <div class="shortcut-item">
+                            <span>Open Help</span>
+                            <div class="shortcut-keys">
+                                <span class="key">F1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Page -->
+            <div class="page" id="help-page" style="display: none;">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Voice Commands</h3>
+                            <span class="card-icon">🗣️</span>
+                        </div>
+                        
+                        <div class="shortcuts-list">
+                            <div class="shortcut-item">
+                                <span>"Hey Assistant, navigate to settings"</span>
+                                <span>Navigate to pages</span>
+                            </div>
+                            
+                            <div class="shortcut-item">
+                                <span>"Enable high contrast mode"</span>
+                                <span>Toggle accessibility features</span>
+                            </div>
+                            
+                            <div class="shortcut-item">
+                                <span>"Increase text size"</span>
+                                <span>Adjust display settings</span>
+                            </div>
+                            
+                            <div class="shortcut-item">
+                                <span>"Read this page"</span>
+                                <span>Screen reader activation</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Getting Started</h3>
+                            <span class="card-icon">🚀</span>
+                        </div>
+                        
+                        <div style="line-height: 1.8;">
+                            <p>1. <strong>Grant microphone access</strong> when prompted</p>
+                            <p>2. <strong>Click "Start Listening"</strong> to begin voice control</p>
+                            <p>3. <strong>Use wake word</strong> "Hey Assistant" followed by your command</p>
+                            <p>4. <strong>Customize settings</strong> in the Settings page</p>
+                            <p>5. <strong>Learn keyboard shortcuts</strong> for quick access</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voice Control Page -->
+            <div class="page" id="voice-control-page" style="display: none;">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Voice Training</h3>
+                            <span class="card-icon">🎯</span>
+                        </div>
+                        
+                        <div style="text-align: center; padding: 2rem 0;">
+                            <div class="voice-visualizer">
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                            </div>
+                            
+                            <p style="margin: 1rem 0; color: var(--secondary-text);">
+                                Say the following phrases to improve recognition accuracy:
+                            </p>
+                            
+                            <div class="toggle-group" style="text-align: left; margin-top: 2rem;">
+                                <div class="toggle-item">
+                                    <span>"Navigate to dashboard"</span>
+                                    <button class="voice-button" style="min-width: 100px; padding: 0.5rem 1rem;">Practice</button>
+                                </div>
+                                
+                                <div class="toggle-item">
+                                    <span>"Enable high contrast"</span>
+                                    <button class="voice-button" style="min-width: 100px; padding: 0.5rem 1rem;">Practice</button>
+                                </div>
+                                
+                                <div class="toggle-item">
+                                    <span>"Increase text size"</span>
+                                    <button class="voice-button" style="min-width: 100px; padding: 0.5rem 1rem;">Practice</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Voice Profile</h3>
+                            <span class="card-icon">👤</span>
+                        </div>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Voice Profile Active</span>
+                                    <span class="toggle-description">Personal voice recognition</span>
+                                </div>
+                                <div class="toggle-switch active">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-label">Multiple Users</span>
+                                    <span class="toggle-description">Support for multiple voice profiles</span>
+                                </div>
+                                <div class="toggle-switch">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Container -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Application State
+        class VoiceAccessibilityApp {
+            constructor() {
+                this.isListening = false;
+                this.recognition = null;
+                this.settings = {
+                    highContrast: false,
+                    largeText: false,
+                    voiceCommands: false,
+                    continuousListening: false,
+                    voiceFeedback: true,
+                    reduceMotion: false,
+                    focusIndicators: true
+                };
+                this.commandHistory = [];
+                this.currentPage = 'dashboard';
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.checkBrowserSupport();
+                this.initializeSpeechRecognition();
+                this.loadSettings();
+                this.updateUI();
+            }
+
+            setupEventListeners() {
+                // Menu toggle
+                document.getElementById('menuToggle').addEventListener('click', () => {
+                    this.toggleSidebar();
+                });
+
+                // Navigation
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const page = e.target.dataset.page;
+                        this.navigateToPage(page);
+                    });
+                });
+
+                // Voice controls
+                document.getElementById('startListening').addEventListener('click', () => {
+                    this.startVoiceRecognition();
+                });
+
+                document.getElementById('stopListening').addEventListener('click', () => {
+                    this.stopVoiceRecognition();
+                });
+
+                document.getElementById('calibrateVoice').addEventListener('click', () => {
+                    this.calibrateVoice();
+                });
+
+                document.getElementById('testVoice').addEventListener('click', () => {
+                    this.testVoice();
+                });
+
+                // Toggle switches
+                this.setupToggleListeners();
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    this.handleKeyboardShortcuts(e);
+                });
+
+                // Focus management
+                document.addEventListener('focusin', (e) => {
+                    if (this.settings.focusIndicators) {
+                        e.target.style.outline = '3px solid var(--accent-color)';
+                        e.target.style.outlineOffset = '2px';
+                    }
+                });
+
+                document.addEventListener('focusout', (e) => {
+                    e.target.style.outline = '';
+                    e.target.style.outlineOffset = '';
+                });
+            }
+
+            setupToggleListeners() {
+                const toggles = {
+                    'highContrastToggle': 'highContrast',
+                    'largeTextToggle': 'largeText',
+                    'voiceCommandsToggle': 'voiceCommands',
+                    'continuousListening': 'continuousListening',
+                    'voiceFeedback': 'voiceFeedback',
+                    'reduceMotion': 'reduceMotion',
+                    'focusIndicators': 'focusIndicators'
+                };
+
+                Object.entries(toggles).forEach(([elementId, settingKey]) => {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.addEventListener('click', () => {
+                            this.toggleSetting(settingKey);
+                        });
+                    }
+                });
+            }
+
+            checkBrowserSupport() {
+                const checks = {
+                    microphone: navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
+                    speechRecognition: window.SpeechRecognition || window.webkitSpeechRecognition,
+                    webAudio: window.AudioContext || window.webkitAudioContext
+                };
+
+                // Update microphone status
+                if (checks.microphone) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(() => {
+                            this.updateSystemStatus('microphone', true, 'Available');
+                        })
+                        .catch(() => {
+                            this.updateSystemStatus('microphone', false, 'Access denied');
+                        });
+                } else {
+                    this.updateSystemStatus('microphone', false, 'Not supported');
+                }
+
+                // Update speech recognition status
+                if (checks.speechRecognition) {
+                    this.updateSystemStatus('speechRecognition', true, 'Supported');
+                } else {
+                    this.updateSystemStatus('speechRecognition', false, 'Not supported');
+                }
+            }
+
+            initializeSpeechRecognition() {
+                if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+                    this.showNotification('Speech recognition not supported in this browser', 'warning');
+                    return;
+                }
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.recognition = new SpeechRecognition();
+
+                this.recognition.continuous = true;
+                this.recognition.interimResults = true;
+                this.recognition.lang = 'en-US';
+
+                this.recognition.onstart = () => {
+                    this.isListening = true;
+                    this.updateVoiceStatus(true, 'Listening...');
+                    this.showVoiceVisualizer(true);
+                    this.addCommandToHistory('Voice recognition started', true);
+                };
+
+                this.recognition.onend = () => {
+                    this.isListening = false;
+                    this.updateVoiceStatus(false, 'Voice Inactive');
+                    this.showVoiceVisualizer(false);
+                    
+                    if (this.settings.continuousListening) {
+                        setTimeout(() => this.startVoiceRecognition(), 1000);
+                    }
+                };
+
+                this.recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+
+                    if (finalTranscript) {
+                        this.processVoiceCommand(finalTranscript.toLowerCase().trim());
+                    }
+                };
+
+                this.recognition.onerror = (event) => {
+                    this.showNotification(`Voice recognition error: ${event.error}`, 'error');
+                    this.addCommandToHistory(`Error: ${event.error}`, false);
+                };
+            }
+
+            processVoiceCommand(command) {
+                this.addCommandToHistory(command, true);
+
+                // Remove wake words
+                const cleanCommand = command
+                    .replace(/^(hey assistant|ok assistant|computer)/i, '')
+                    .trim();
+
+                // Navigation commands
+                if (cleanCommand.includes('navigate to') || cleanCommand.includes('go to')) {
+                    const pageCommands = {
+                        'dashboard': 'dashboard',
+                        'voice control': 'voice-control',
+                        'accessibility': 'accessibility',
+                        'settings': 'settings',
+                        'shortcuts': 'shortcuts',
+                        'help': 'help'
+                    };
+
+                    for (const [keyword, page] of Object.entries(pageCommands)) {
+                        if (cleanCommand.includes(keyword)) {
+                            this.navigateToPage(page);
+                            this.speakFeedback(`Navigating to ${keyword}`);
+                            return;
+                        }
+                    }
+                }
+
+                // Toggle commands
+                const toggleCommands = {
+                    'high contrast': 'highContrast',
+                    'large text': 'largeText',
+                    'voice commands': 'voiceCommands',
+                    'continuous listening': 'continuousListening'
+                };
+
+                for (const [phrase, setting] of Object.entries(toggleCommands)) {
+                    if (cleanCommand.includes(phrase)) {
+                        const action = cleanCommand.includes('enable') || cleanCommand.includes('turn on') ? true :
+                                     cleanCommand.includes('disable') || cleanCommand.includes('turn off') ? false :
+                                     null;
+                        
+                        if (action !== null) {
+                            this.settings[setting] = action;
+                            this.updateUI();
+                            this.speakFeedback(`${phrase} ${action ? 'enabled' : 'disabled'}`);
+                        } else {
+                            this.toggleSetting(setting);
+                            this.speakFeedback(`${phrase} ${this.settings[setting] ? 'enabled' : 'disabled'}`);
+                        }
+                        return;
+                    }
+                }
+
+                // Text size commands
+                if (cleanCommand.includes('increase text') || cleanCommand.includes('make text bigger')) {
+                    this.adjustTextSize(true);
+                    this.speakFeedback('Text size increased');
+                    return;
+                }
+
+                if (cleanCommand.includes('decrease text') || cleanCommand.includes('make text smaller')) {
+                    this.adjustTextSize(false);
+                    this.speakFeedback('Text size decreased');
+                    return;
+                }
+
+                // Help commands
+                if (cleanCommand.includes('help') || cleanCommand.includes('what can you do')) {
+                    this.navigateToPage('help');
+                    this.speakFeedback('Opening help page');
+                    return;
+                }
+
+                // Read page command
+                if (cleanCommand.includes('read page') || cleanCommand.includes('read this')) {
+                    this.readCurrentPage();
+                    return;
+                }
+
+                // Unknown command
+                this.showNotification('Command not recognized', 'warning');
+                this.speakFeedback('Sorry, I did not understand that command');
+            }
+
+            startVoiceRecognition() {
+                if (!this.recognition) {
+                    this.showNotification('Speech recognition not available', 'error');
+                    return;
+                }
+
+                try {
+                    this.recognition.start();
+                    this.showNotification('Voice recognition started', 'success');
+                } catch (error) {
+                    this.showNotification('Failed to start voice recognition', 'error');
+                }
+            }
+
+            stopVoiceRecognition() {
+                if (this.recognition && this.isListening) {
+                    this.recognition.stop();
+                    this.showNotification('Voice recognition stopped', 'warning');
+                }
+            }
+
+            calibrateVoice() {
+                this.showNotification('Voice calibration started', 'success');
+                this.navigateToPage('voice-control');
+                
+                // Simulate calibration process
+                setTimeout(() => {
+                    this.showNotification('Voice calibration completed', 'success');
+                    this.addCommandToHistory('Voice calibration completed', true);
+                }, 3000);
+            }
+
+            testVoice() {
+                if (!this.recognition) {
+                    this.showNotification('Speech recognition not available', 'error');
+                    return;
+                }
+
+                this.showNotification('Say "Hello" to test voice recognition', 'success');
+                
+                const testRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                testRecognition.continuous = false;
+                testRecognition.interimResults = false;
+                
+                testRecognition.onresult = (event) => {
+                    const result = event.results[0][0].transcript.toLowerCase();
+                    if (result.includes('hello')) {
+                        this.showNotification('Voice test successful!', 'success');
+                        this.speakFeedback('Hello! Voice test successful');
+                    } else {
+                        this.showNotification(`Heard: "${result}"`, 'warning');
+                    }
+                };
+
+                testRecognition.onerror = () => {
+                    this.showNotification('Voice test failed', 'error');
+                };
+
+                testRecognition.start();
+            }
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            }
+
+            navigateToPage(page) {
+                // Hide all pages
+                document.querySelectorAll('.page').forEach(p => {
+                    p.style.display = 'none';
+                });
+
+                // Show selected page
+                const targetPage = document.getElementById(`${page}-page`);
+                if (targetPage) {
+                    targetPage.style.display = 'block';
+                }
+
+                // Update navigation
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+
+                const activeLink = document.querySelector(`[data-page="${page}"]`);
+                if (activeLink) {
+                    activeLink.classList.add('active');
+                }
+
+                // Update page title
+                const pageTitles = {
+                    'dashboard': 'Dashboard',
+                    'voice-control': 'Voice Control',
+                    'accessibility': 'Accessibility Features',
+                    'settings': 'Settings',
+                    'shortcuts': 'Keyboard Shortcuts',
+                    'help': 'Help & Support'
+                };
+
+                document.getElementById('pageTitle').textContent = pageTitles[page] || 'Dashboard';
+                this.currentPage = page;
+            }
+
+            toggleSetting(setting) {
+                this.settings[setting] = !this.settings[setting];
+                this.updateUI();
+                this.saveSettings();
+                
+                this.showNotification(
+                    `${setting.replace(/([A-Z])/g, ' $1')} ${this.settings[setting] ? 'enabled' : 'disabled'}`,
+                    'success'
+                );
+            }
+
+            updateUI() {
+                // Update toggle switches
+                Object.entries(this.settings).forEach(([setting, value]) => {
+                    const element = document.getElementById(`${setting}Toggle`) || 
+                                  document.getElementById(setting);
+                    if (element) {
+                        element.classList.toggle('active', value);
+                    }
+                });
+
+                // Apply settings to body
+                document.body.classList.toggle('high-contrast', this.settings.highContrast);
+                document.body.classList.toggle('large-text', this.settings.largeText);
+
+                // Update motion preferences
+                if (this.settings.reduceMotion) {
+                    document.documentElement.style.setProperty('--animation-duration', '0s');
+                } else {
+                    document.documentElement.style.removeProperty('--animation-duration');
+                }
+            }
+
+            updateVoiceStatus(active, text) {
+                const dot = document.getElementById('voiceStatusDot');
+                const statusText = document.getElementById('voiceStatusText');
+                
+                dot.classList.toggle('active', active);
+                statusText.textContent = text;
+            }
+
+            updateSystemStatus(system, status, message) {
+                const statusElement = document.getElementById(`${system}Status`);
+                const toggleElement = document.getElementById(`${system}Status`).closest('.toggle-item').querySelector('.toggle-switch');
+                
+                if (statusElement) {
+                    statusElement.textContent = message;
+                    toggleElement.classList.toggle('active', status);
+                }
+            }
+
+            showVoiceVisualizer(show) {
+                const visualizers = document.querySelectorAll('.voice-visualizer');
+                visualizers.forEach(viz => {
+                    viz.style.display = show ? 'flex' : 'none';
+                });
+            }
+
+            addCommandToHistory(command, success) {
+                const historyContainer = document.getElementById('commandHistory');
+                const commandItem = document.createElement('div');
+                commandItem.className = 'command-item';
+                
+                const now = new Date();
+                commandItem.innerHTML = `
+                    <span class="command-status ${success ? '' : 'error'}"></span>
+                    <span class="command-text">${command}</span>
+                    <span class="command-time">${now.toLocaleTimeString()}</span>
+                `;
+                
+                historyContainer.insertBefore(commandItem, historyContainer.firstChild);
+                
+                // Keep only last 10 commands
+                while (historyContainer.children.length > 10) {
+                    historyContainer.removeChild(historyContainer.lastChild);
+                }
+
+                this.commandHistory.push({
+                    command,
+                    success,
+                    timestamp: now
+                });
+            }
+
+            speakFeedback(text) {
+                if (!this.settings.voiceFeedback || !window.speechSynthesis) return;
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.8;
+                utterance.pitch = 1;
+                utterance.volume = 0.7;
+                
+                window.speechSynthesis.speak(utterance);
+            }
+
+            readCurrentPage() {
+                const content = document.querySelector(`#${this.currentPage}-page`);
+                if (!content) return;
+
+                const text = content.textContent.replace(/\s+/g, ' ').trim();
+                this.speakFeedback(`Reading ${this.currentPage} page. ${text}`);
+            }
+
+            adjustTextSize(increase) {
+                const root = document.documentElement;
+                const currentSize = parseInt(getComputedStyle(root).fontSize) || 16;
+                const newSize = increase ? Math.min(currentSize + 2, 24) : Math.max(currentSize - 2, 12);
+                
+                root.style.fontSize = `${newSize}px`;
+                this.showNotification(`Text size ${increase ? 'increased' : 'decreased'} to ${newSize}px`, 'success');
+            }
+
+            handleKeyboardShortcuts(event) {
+                // Ctrl+Shift+V - Toggle Voice Control
+                if (event.ctrlKey && event.shiftKey && event.key === 'V') {
+                    event.preventDefault();
+                    if (this.isListening) {
+                        this.stopVoiceRecognition();
+                    } else {
+                        this.startVoiceRecognition();
+                    }
+                }
+
+                // Alt+Shift+H - Toggle High Contrast
+                if (event.altKey && event.shiftKey && event.key === 'H') {
+                    event.preventDefault();
+                    this.toggleSetting('highContrast');
+                }
+
+                // Ctrl++ - Increase Text Size
+                if (event.ctrlKey && event.key === '=') {
+                    event.preventDefault();
+                    this.adjustTextSize(true);
+                }
+
+                // Ctrl+- - Decrease Text Size
+                if (event.ctrlKey && event.key === '-') {
+                    event.preventDefault();
+                    this.adjustTextSize(false);
+                }
+
+                // F1 - Open Help
+                if (event.key === 'F1') {
+                    event.preventDefault();
+                    this.navigateToPage('help');
+                }
+
+                // Escape - Close sidebar
+                if (event.key === 'Escape') {
+                    const sidebar = document.getElementById('sidebar');
+                    if (!sidebar.classList.contains('collapsed')) {
+                        this.toggleSidebar();
+                    }
+                }
+            }
+
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type} show`;
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 4000);
+            }
+
+            saveSettings() {
+                try {
+                    // In a real app, this would save to localStorage or backend
+                    console.log('Settings saved:', this.settings);
+                } catch (error) {
+                    console.error('Failed to save settings:', error);
+                }
+            }
+
+            loadSettings() {
+                try {
+                    // In a real app, this would load from localStorage or backend
+                    console.log('Settings loaded:', this.settings);
+                } catch (error) {
+                    console.error('Failed to load settings:', error);
+                }
+            }
+        }
+
+        // Initialize the application
+        const app = new VoiceAccessibilityApp();
+
+        // Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'voice-accessibility-v1';
+                    const urlsToCache = [
+                        '/',
+                        '/styles.css',
+                        '/script.js'
+                    ];
+
+                    self.addEventListener('install', (event) => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME)
+                                .then((cache) => cache.addAll(urlsToCache))
+                        );
+                    });
+
+                    self.addEventListener('fetch', (event) => {
+                        event.respondWith(
+                            caches.match(event.request)
+                                .then((response) => {
+                                    return response || fetch(event.request);
+                                })
+                        );
+                    });
+                `;
+
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(() => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            const perfData = performance.getEntriesByType('navigation')[0];
+            console.log('Page load time:', perfData.loadEventEnd - perfData.loadEventStart);
+        });
+
+        // Error handling
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            app.showNotification('An error occurred. Please refresh the page.', 'error');
+        });
+
+        // Unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            event.preventDefault();
+        });
+
+        // Accessibility enhancements
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add ARIA labels dynamically
+            document.querySelectorAll('.toggle-switch').forEach((toggle, index) => {
+                toggle.setAttribute('role', 'switch');
+                toggle.setAttribute('aria-checked', 'false');
+                toggle.setAttribute('tabindex', '0');
+                toggle.setAttribute('aria-label', `Toggle switch ${index + 1}`);
+            });
+
+            // Enhance keyboard navigation
+            document.querySelectorAll('.voice-button').forEach(button => {
+                button.setAttribute('role', 'button');
+                button.setAttribute('tabindex', '0');
+            });
+
+            // Add landmark roles
+            document.querySelector('.sidebar').setAttribute('role', 'navigation');
+            document.querySelector('.main-content').setAttribute('role', 'main');
+            document.querySelector('.header').setAttribute('role', 'banner');
+        });
+    </script>
+</body>
+</html>
